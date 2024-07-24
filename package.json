@@ -1,0 +1,46 @@
+{
+	"name": "uqry",
+	"description": "filtering and aggregating data based on MongoDB-like query syntax",
+	"version": "0.0.1",
+	"type": "module",
+	"source": "./src/index.js",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"unpkg": "./dist/index.min.js",
+	"umd:main": "dist/index.umd.js",
+	"exports": {
+		"require": "./dist/index.cjs",
+		"default": "./dist/index.js"
+	},
+	"files": [
+		"dist"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kethan/uqry.git"
+	},
+	"scripts": {
+		"build": "rollup --config rollup.config.js",
+		"test": "node test.js"
+	},
+	"devDependencies": {
+		"@rollup/plugin-terser": "^0.4.4",
+		"rollup": "^4.19.0"
+	},
+	"keywords": [
+		"query",
+        "filter",
+        "aggregating",
+        "aggregate",
+        "mongodb",
+        "mongo",
+        "pipeline"
+	],
+	"author": "Kethan Surana",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/kethan/uqry/issues"
+	},
+	"homepage": "https://github.com/kethan/uqry#readme",
+	"dependencies": {}
+}

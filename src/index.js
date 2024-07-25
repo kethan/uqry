@@ -9,10 +9,14 @@ const isEqual = (a, b) => {
     }
     return false;
 };
+
 const isObject = (obj) => typeof obj === 'object' && !Array.isArray(obj);
 const is$ = (obj) => typeof obj === 'string' && obj.startsWith('$');
 
-// filter operations
+// Nested property access function
+const dlv = (obj, key) => (Array.isArray(key) ? key : key.split('.')).reduce((a, b) => (a ? a[b] : a), obj);
+
+// Filter operations
 const filterOps = {
     $eq: (query, value) => isEqual(query, value),
     $ne: (query, value) => !isEqual(query, value),
@@ -25,6 +29,7 @@ const filterOps = {
     $and: (query, value) => query.every(clause => filter(clause)(value)),
     $or: (query, value) => query.some(clause => filter(clause)(value)),
     $not: (query, value) => !filter(query)(value),
+    $regex: (query, value) => new RegExp(query).test(value),
 };
 
 // Aggregation operations
@@ -55,15 +60,24 @@ const aggregateOps = {
     $and: (args, context) => args.every(arg => expression(arg)(context)),
     $or: (args, context) => args.some(arg => expression(arg)(context)),
     $not: (args, context) => !expression(args[0])(context),
+    $switch: (args, context) => {
+        const { branches, default: defaultCase } = args[0];
+        for (const branch of branches) {
+            if (expression(branch.case)(context)) {
+                return expression(branch.then)(context);
+            }
+        }
+        return expression(defaultCase)(context);
+    },
 };
 
-// pipeline stages
+// Pipeline stages
 const pipelineOps = {
     $project: (projection, context) => {
         const result = {};
         Object.entries(projection).forEach(([key, value]) => {
             if (value === 1) {
-                result[key] = context[key];
+                result[key] = dlv(context, key);
             } else if (is$(value)) {
                 result[key] = expression(value)(context);
             } else if (isObject(value)) {
@@ -87,7 +101,8 @@ const pipelineOps = {
         return Object.values(groups).map(group => {
             Object.entries(group).forEach(([key, values]) => {
                 if (key !== '_id') {
-                    group[key] = aggregateOps.$sum(values, {});
+                    const [op, arg] = Object.entries(accumulators[key])[0];
+                    group[key] = aggregateOps[op](values, {});
                 }
             });
             return group;
@@ -95,31 +110,32 @@ const pipelineOps = {
     },
     $sort: (sortObj, contextArray) => {
         const [key, order] = Object.entries(sortObj)[0];
-        return contextArray.sort((a, b) => (a[key] > b[key] ? order : -order));
+        return contextArray.sort((a, b) => (dlv(a, key) > dlv(b, key) ? order : -order));
     },
     $skip: (count, contextArray) => contextArray.slice(count),
     $limit: (count, contextArray) => contextArray.slice(0, count),
     $count: (fieldName, contextArray) => [{ [fieldName]: contextArray.length }],
 };
 
-const add = (op, fn) =>  aggregateOps[op] = fn;
-// filter 
+const add = (op, fn) => aggregateOps[op] = fn;
+
+// Filter function
 const filter = (query) => (value) => {
     if (isObject(query)) {
         return Object.entries(query).every(([key, subFilter]) => {
             if (is$(key)) {
                 return filterOps[key](subFilter, value);
             }
-            return filter(subFilter)(value?.[key]);
+            return filter(subFilter)(dlv(value, key));
         });
     }
     return isEqual(value, query);
 };
 
-// expression evalation based on context
+// Expression evaluation based on context
 const expression = (expr) => (context) => {
     if (is$(expr)) {
-        return context[expr.slice(1)];
+        return dlv(context, expr.slice(1));
     }
     if (isObject(expr)) {
         const [operator, args] = Object.entries(expr)[0];
@@ -130,8 +146,7 @@ const expression = (expr) => (context) => {
     return expr;
 };
 
-
-// aggregate function
+// Aggregate function
 const aggregate = (pipeline) => (contextArray) => {
     return pipeline.reduce((currentContextArray, stage) => {
         const [operator, args] = Object.entries(stage)[0];

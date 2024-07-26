@@ -30,6 +30,10 @@ const filterOps = {
     $or: (query, value) => query.some(clause => filter(clause)(value)),
     $not: (query, value) => !filter(query)(value),
     $regex: (query, value) => new RegExp(query).test(value),
+    $expr: (query, value) => expression(query)(value),
+    $exists: (_, value) => value !== undefined,
+    $type: (query, value) => typeof value === query,
+    $mod: (query, value) => (value % query[0]) === query[1]
 };
 
 // Aggregation operations

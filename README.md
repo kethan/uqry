@@ -50,43 +50,65 @@ const data = [
 const filterFunc = filter({ city: "New York", age: { $gt: 30 } });
 const result = data.filter(filterFunc);
 console.log(result); // [{ name: 'Charlie', age: 35, city: 'New York' }]
+
+// $expr in filter function
+console.log([
+    { _id: 1, item: "binder", qty: parseInt("100"), price: parseFloat("12") },
+    { _id: 2, item: "notebook", qty: parseInt("200"), price: parseFloat("8") },
+    { _id: 3, item: "pencil", qty: parseInt("50"), price: parseFloat("6") },
+    { _id: 4, item: "eraser", qty: parseInt("150"), price: parseFloat("3") },
+    { _id: 5, item: "legal pad", qty: parseInt("42"), price: parseFloat("10") }
+].filter(filter({
+    $expr: {
+        $lt: [
+            {
+                $cond: [
+                    { $gte: ["$qty", 100] },
+                    { $multiply: ["$price", parseFloat("0.50")] },
+                    { $multiply: ["$price", parseFloat("0.75")] }
+                ]
+            },
+            5
+        ]
+    }
+})));
 ```
 
 ### Nested properties filter
 
 ```javascript
 const data = [
-    {
-        name: "Alice",
-        age: 30,
-        address: {
-            city: "New York",
-            zip: 10001
-        }
-    },
-    {
-        name: "Bob",
-        age: 25,
-        address: {
-            city: "San Francisco",
-            zip: 94105
-        }
-    },
-    {
-        name: "Charlie",
-        age: 35,
-        address: {
-            city: "New York",
-            zip: 10002
-        }
-    }
+	{
+		name: "Alice",
+		age: 30,
+		address: {
+			city: "New York",
+			zip: 10001,
+		},
+	},
+	{
+		name: "Bob",
+		age: 25,
+		address: {
+			city: "San Francisco",
+			zip: 94105,
+		},
+	},
+	{
+		name: "Charlie",
+		age: 35,
+		address: {
+			city: "New York",
+			zip: 10002,
+		},
+	},
 ];
 
 const filterCriteria = {
-    'address.city': { $eq: 'New York' }
+	"address.city": { $eq: "New York" },
 };
 
-const filteredData = data.filter(item => filter(filterCriteria)(item));
+const filteredData = data.filter((item) => filter(filterCriteria)(item));
 console.log(filteredData);
 /*
 [
@@ -110,16 +132,16 @@ console.log(filteredData);
 */
 
 const pipeline = [
-    {
-        $group: {
-            _id: "$address.city",
-            avgAge: { $avg: "$age" },
-            count: { $sum: 1 }
-        }
-    },
-    {
-        $sort: { count: -1 }
-    }
+	{
+		$group: {
+			_id: "$address.city",
+			avgAge: { $avg: "$age" },
+			count: { $sum: 1 },
+		},
+	},
+	{
+		$sort: { count: -1 },
+	},
 ];
 
 const aggregatedData = aggregate(pipeline)(data);
@@ -139,7 +161,6 @@ console.log(aggregatedData);
     }
 ]
 */
-
 ```
 
 ### Expression Function
@@ -161,24 +182,28 @@ const context = {};
 const result = expression(expr)(context); // 6
 
 // More expression
-const context = { a: 5, b: 10, str: 'Hello World' };
+const context = { a: 5, b: 10, str: "Hello World" };
 
-console.log(expression({ $add: ['$a', '$b'] })(context)); // 15
-console.log(expression({ $subtract: ['$b', '$a'] })(context)); // 5
-console.log(expression({ $concat: ['$str', '!!!'] })(context)); // 'Hello World!!!'
+console.log(expression({ $add: ["$a", "$b"] })(context)); // 15
+console.log(expression({ $subtract: ["$b", "$a"] })(context)); // 5
+console.log(expression({ $concat: ["$str", "!!!"] })(context)); // 'Hello World!!!'
 
 // Test data
 const data = [
-    { name: 'John', age: 18 },
-    { name: 'Alice', age: 20 },
-    { name: 'John', age: 25 },
-    { name: 'Bob', age: 15 },
-    { name: 'Charlie', age: 22 },
-    { name: 'David', age: 30 },
+	{ name: "John", age: 18 },
+	{ name: "Alice", age: 20 },
+	{ name: "John", age: 25 },
+	{ name: "Bob", age: 15 },
+	{ name: "Charlie", age: 22 },
+	{ name: "David", age: 30 },
 ];
-console.log(data.filter(expression({ $and: [{ $eq: ['$name', 'John'] }, { $gt: ['$age', 18] }] })));
-
-
+console.log(
+	data.filter(
+		expression({
+			$and: [{ $eq: ["$name", "John"] }, { $gt: ["$age", 18] }],
+		})
+	)
+);
 ```
 
 ### Aggregate Function
@@ -244,35 +269,36 @@ console.log(result);
 
 // Switch Case
 console.log(
-	aggregate([
-		{
-			$project: {
-				statusDescription: {
-					$switch: {
-						branches: [
-							{
-								case: { $eq: ["$status", "A"] },
-								then: "Available",
-							},
-							{
-								case: { $eq: ["$status", "D"] },
-								then: "Discontinued",
-							},
-						],
-						default: "No status found",
-					},
-				},
-			},
-		},
-	])([
-		{ status: "A" },
-		{ status: "D" },
-		{ status: "A" },
-		{ status: "A" },
-		{ status: "D" },
-		{ status: "E" },
-	])
+  aggregate([
+    {
+      $project: {
+        statusDescription: {
+          $switch: {
+            branches: [
+              {
+                case: { $eq: ["$status", "A"] },
+                then: "Available",
+              },
+              {
+                case: { $eq: ["$status", "D"] },
+                then: "Discontinued",
+              },
+            ],
+            default: "No status found",
+          },
+        },
+      },
+    },
+  ])([
+    { status: "A" },
+    { status: "D" },
+    { status: "A" },
+    { status: "A" },
+    { status: "D" },
+    { status: "E" },
+  ]),
 );
+
 ```
 
 ### Adding Custom Aggregation Operators
@@ -320,7 +346,11 @@ add("$substr", (args, context) => {
 -   `$and`: Logical AND
 -   `$or`: Logical OR
 -   `$not`: Logical NOT
--       `$regexp`: Regexp
+-   `$regexp`: Regexp
+-   `$expr`: Expression
+-   `$exists`: Element exists
+-   `$type`: Type of the value
+-   `mod`: Mod
 
 ## Built-In Aggregation Operations
 

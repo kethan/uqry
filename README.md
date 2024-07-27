@@ -2,7 +2,7 @@
 
 # Aggregation and Filtering
 
-[![tests](https://github.com/uqry/actions/workflows/node.js.yml/badge.svg)](https://github.com/uqry/actions/workflows/node.js.yml) [![Version](https://img.shields.io/npm/v/uqry.svg?color=success&style=flat-square)](https://www.npmjs.com/package/uqry) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/index.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/index.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry)
+[![tests](https://github.com/kethan/uqry/actions/workflows/node.js.yml/badge.svg)](https://github.com/kethan/uqry/actions/workflows/node.js.yml) [![Version](https://img.shields.io/npm/v/uqry.svg?color=success&style=flat-square)](https://www.npmjs.com/package/uqry) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/index.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/index.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry)
 
 This module provides functionality for filtering and aggregating data based on MongoDB-like query syntax. It includes a set of predefined operations and the ability to extend with custom operators.
 

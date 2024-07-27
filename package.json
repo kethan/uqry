@@ -1,13 +1,13 @@
 {
 	"name": "uqry",
 	"description": "filtering and aggregating data based on MongoDB-like query syntax",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"type": "module",
 	"source": "./src/index.js",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"unpkg": "./dist/index.min.js",
-	"umd:main": "dist/index.umd.js",
+	"umd:main": "./dist/index.umd.js",
 	"exports": {
 		"require": "./dist/index.cjs",
 		"default": "./dist/index.js"
@@ -29,12 +29,12 @@
 	},
 	"keywords": [
 		"query",
-        "filter",
-        "aggregating",
-        "aggregate",
-        "mongodb",
-        "mongo",
-        "pipeline"
+		"filter",
+		"aggregating",
+		"aggregate",
+		"mongodb",
+		"mongo",
+		"pipeline"
 	],
 	"author": "Kethan Surana",
 	"license": "ISC",

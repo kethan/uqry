@@ -2,7 +2,7 @@
 
 # Aggregation and Filtering
 
-[![Version](https://img.shields.io/npm/v/uqry.svg?color=success&style=flat-square)](https://www.npmjs.com/package/uqry) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry)
+[![tests](https://github.com/dy/uqry/actions/workflows/node.js.yml/badge.svg)](https://github.com/dy/uqry/actions/workflows/node.js.yml) [![Version](https://img.shields.io/npm/v/uqry.svg?color=success&style=flat-square)](https://www.npmjs.com/package/uqry) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/index.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/index.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry)
 
 This module provides functionality for filtering and aggregating data based on MongoDB-like query syntax. It includes a set of predefined operations and the ability to extend with custom operators.
 
@@ -301,37 +301,108 @@ console.log(
 
 ```
 
-### Adding Custom Aggregation Operators
+Here’s a `README.md` file specifically for the `add` function:
 
-You can add custom aggregation operators using the `add` function.
+---
 
-#### Syntax
+# `add` Function
+
+## Overview
+
+The `add` function allows you to dynamically add custom operators to the filtering, aggregation, and pipeline stages of your data processing operations. This feature is useful for extending the functionality of your data manipulation library with custom logic that can be applied to your datasets.
+
+## Function Signature
 
 ```javascript
-const add = (op, fn);
+add(which, op, fn)
 ```
 
-#### Example
+### Parameters
+
+- **`which`**: A string specifying the type of operation to which the custom function should be added. Valid values are:
+  - `'filter'`: For adding custom filter operations.
+  - `'pipeline'`: For adding custom pipeline stages.
+  - `'aggregate'`: For adding custom aggregation operations.
+
+- **`op`**: A string representing the name of the custom operation or stage. This will be used to reference the custom operation in your queries or pipelines.
+
+- **`fn`**: A function implementing the custom logic for the operation. The signature of this function depends on the type of operation:
+  - **Filter Function**: `(query, value) => boolean`
+  - **Pipeline Function**: `(args, context) => result`
+  - **Aggregate Function**: `(args, context) => result`
+
+## Usage
+
+### Adding Custom Filter Operations
+
+To add a custom filter operation, use the `add` function with the `'filter'` parameter.
 
 ```javascript
-const customOperator = ([a, b], context) =>
-	expression(a)(context) % expression(b)(context);
-
-add("$mod", customOperator);
-
-const context = { a: 10, b: 3 };
-
-console.log(expression({ $mod: ["$a", "$b"] })(context)); // 1
-
-add("$toLower", (args, context) => expression(args[0])(context).toLowerCase());
-add("$toUpper", (args, context) => expression(args[0])(context).toUpperCase());
-add("$substr", (args, context) => {
-	const str = expression(args[0])(context);
-	const start = Math.max(0, expression(args[1])(context) - 1);
-	const length = expression(args[2])(context);
-	return str.slice(start, start + length);
+add('filter', '$customOp', (query, value) => {
+    // Custom filter logic
 });
 ```
+
+### Adding Custom Pipeline Stages
+
+To add a custom pipeline stage, use the `add` function with the `'pipeline'` parameter.
+
+```javascript
+add('pipeline', '$customStage', (args, context) => {
+    // Custom pipeline stage logic
+});
+```
+
+### Adding Custom Aggregation Operations
+
+To add a custom expression operation, use the `add` function with the `'expression'` parameter.
+
+```javascript
+add('expression', '$customAgg', (args, context) => {
+    // Custom expression logic
+});
+```
+
+## Examples
+
+### Custom Filter Operation
+
+```javascript
+add('filter', '$isEven', (query, value) => value % 2 === 0);
+
+// Usage in filter
+const result = data.filter(filter({ age: { $isEven: true } }));
+```
+
+### Custom Pipeline Stage
+
+```javascript
+add('pipeline', '$addField', (args, context) => {
+    return { ...context, newField: 'newValue' };
+});
+
+// Usage in pipeline
+const result = aggregate([{ $addField: [] }])(data);
+```
+
+### Custom expression Operation
+
+```javascript
+add('expression', '$sumField', (args, context) => {
+    return args.map(arg => expression(arg)(context)).reduce((a, b) => a + b, 0);
+});
+
+// Usage in aggregation
+const result = aggregate([{ $sumField: ['field'] }])(data);
+```
+
+## Notes
+
+- Ensure that the custom functions do not modify the original data or context unless intended.
+- Custom functions should handle various edge cases and invalid inputs gracefully.
+- Custom filter, pipeline, and expression operations should be tested thoroughly to ensure they behave as expected.
+
+---
 
 ## Built-In Filter Operations
 
@@ -346,11 +417,15 @@ add("$substr", (args, context) => {
 -   `$and`: Logical AND
 -   `$or`: Logical OR
 -   `$not`: Logical NOT
--   `$regexp`: Regexp
+-   `$regex`: Regexp
 -   `$expr`: Expression
 -   `$exists`: Element exists
 -   `$type`: Type of the value
--   `mod`: Mod
+-   `$mod`: Mod
+-	`$elemMatch`: Array element matches
+-	`$all`: All elements matched in array
+-	`$size`: Size of an array
+-	`$where`: Custom function
 
 ## Built-In Aggregation Operations
 

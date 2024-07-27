@@ -24,20 +24,26 @@ const filterOps = {
     $gte: (query, value) => value >= query,
     $lt: (query, value) => value < query,
     $lte: (query, value) => value <= query,
-    $in: (query, value) => value.some(val => query.includes(val)),
-    $nin: (query, value) => !value.some(val => query.includes(val)),
+    $in: (query, value) => query.some(val => value.includes(val)),
+    $nin: (query, value) => !query.some(val => value.includes(val)),
     $and: (query, value) => query.every(clause => filter(clause)(value)),
     $or: (query, value) => query.some(clause => filter(clause)(value)),
     $not: (query, value) => !filter(query)(value),
+
     $regex: (query, value) => new RegExp(query).test(value),
     $expr: (query, value) => expression(query)(value),
     $exists: (_, value) => value !== undefined,
     $type: (query, value) => typeof value === query,
-    $mod: (query, value) => (value % query[0]) === query[1]
+
+    $mod: (query, value) => (value % query[0]) === query[1],
+    $elemMatch: (query, value) => (!Array.isArray(value)) ? false : value.some(item => filter(query)(item)),
+    $all: (query, value) => (!Array.isArray(value)) ? false : query.every(q => value.includes(q)),
+    $size: (query, value) => Array.isArray(value) ? value.length === query : false,
+    $where: function (query, value) { return query.call(value) }
 };
 
 // Aggregation operations
-const aggregateOps = {
+const expressionOps = {
     $add: (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a + b, 0),
     $subtract: (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a - b),
     $multiply: (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a * b, 1),
@@ -80,13 +86,7 @@ const pipelineOps = {
     $project: (projection, context) => {
         const result = {};
         Object.entries(projection).forEach(([key, value]) => {
-            if (value === 1) {
-                result[key] = dlv(context, key);
-            } else if (is$(value)) {
-                result[key] = expression(value)(context);
-            } else if (isObject(value)) {
-                result[key] = expression(value)(context);
-            }
+            result[key] = value === 1 ? dlv(context, key) : expression(value)(context);
         });
         return result;
     },
@@ -105,8 +105,8 @@ const pipelineOps = {
         return Object.values(groups).map(group => {
             Object.entries(group).forEach(([key, values]) => {
                 if (key !== '_id') {
-                    const [op, arg] = Object.entries(accumulators[key])[0];
-                    group[key] = aggregateOps[op](values, {});
+                    const [op] = Object.entries(accumulators[key])[0];
+                    group[key] = expressionOps[op](values, {});
                 }
             });
             return group;
@@ -114,14 +114,18 @@ const pipelineOps = {
     },
     $sort: (sortObj, contextArray) => {
         const [key, order] = Object.entries(sortObj)[0];
-        return contextArray.sort((a, b) => (dlv(a, key) > dlv(b, key) ? order : -order));
+        return [...contextArray].sort((a, b) => (dlv(a, key) > dlv(b, key) ? order : -order));
     },
-    $skip: (count, contextArray) => contextArray.slice(count),
-    $limit: (count, contextArray) => contextArray.slice(0, count),
+    $skip: (count, contextArray) => [...contextArray].slice(count),
+    $limit: (count, contextArray) => [...contextArray].slice(0, count),
     $count: (fieldName, contextArray) => [{ [fieldName]: contextArray.length }],
 };
 
-const add = (op, fn) => aggregateOps[op] = fn;
+const add = (which, op, fn) => {
+    if (which === 'filter') filterOps[op] = fn;
+    if (which === 'pipeline') pipelineOps[op] = fn;
+    if (which === 'expression') expressionOps[op] = fn;
+}
 
 // Filter function
 const filter = (query) => (value) => {
@@ -143,8 +147,8 @@ const expression = (expr) => (context) => {
     }
     if (isObject(expr)) {
         const [operator, args] = Object.entries(expr)[0];
-        if (aggregateOps[operator]) {
-            return aggregateOps[operator](Array.isArray(args) ? args : [args], context);
+        if (expressionOps[operator]) {
+            return expressionOps[operator](Array.isArray(args) ? args : [args], context);
         }
     }
     return expr;
@@ -164,4 +168,4 @@ const aggregate = (pipeline) => (contextArray) => {
     }, contextArray);
 };
 
-export { filter, expression, aggregate, add }
+export { filter, expression, aggregate, add };

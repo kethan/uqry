@@ -24,8 +24,8 @@ const filterOps = {
     $gte: (query, value) => value >= query,
     $lt: (query, value) => value < query,
     $lte: (query, value) => value <= query,
-    $in: (query, value) => query.some(val => isEqual(val, value)),
-    $nin: (query, value) => !query.some(val => isEqual(val, value)),
+    $in: (query, value) => (Array.isArray(query) ? query : [query]).some(val => isEqual(val, value)),
+    $nin: (query, value) => !(Array.isArray(query) ? query : [query]).some(val => isEqual(val, value)),
     $and: (query, value) => query.every(clause => filter(clause)(value)),
     $or: (query, value) => query.some(clause => filter(clause)(value)),
     $not: (query, value) => !filter(query)(value),
@@ -36,8 +36,8 @@ const filterOps = {
     $type: (query, value) => typeof value === query,
 
     $mod: (query, value) => (value % query[0]) === query[1],
-    $elemMatch: (query, value) => (!Array.isArray(value)) ? false : value.some(item => filter(query)(item)),
-    $all: (query, value) =>  (!Array.isArray(value)) ? false : isEqual(query, value),
+    $elemMatch: (query, value) => !Array.isArray(value) ? false : value.some(item => filter(query)(item)),
+    $all: (query, value) => !Array.isArray(value) ? false : isEqual(query, value),
     $size: (query, value) => Array.isArray(value) ? value.length === query : false,
     $where: function (query, value) { return query.call(value) }
 };
@@ -64,8 +64,8 @@ const expressionOps = {
     $lt: ([a, b], context) => expression(a)(context) < expression(b)(context),
     $lte: ([a, b], context) => expression(a)(context) <= expression(b)(context),
 
-    $in: ([a, b], context) => expression(b)(context).some(val => isEqual(expression(a)(context), val)),
-    $nin: ([a, b], context) => !expression(b)(context).some(val => isEqual(expression(a)(context), val)),
+    $in: ([a, b], context) => (Array.isArray(b) ? expression(b)(context) : expression([b])(context)).some(val => isEqual(expression(a)(context), val)),
+    $nin: ([a, b], context) => !(Array.isArray(b) ? expression(b)(context) : expression([b])(context)).some(val => isEqual(expression(a)(context), val)),
 
     $and: (args, context) => args.every(arg => expression(arg)(context)),
     $or: (args, context) => args.some(arg => expression(arg)(context)),

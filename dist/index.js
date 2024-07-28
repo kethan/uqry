@@ -24,8 +24,8 @@ const filterOps = {
     $gte: (query, value) => value >= query,
     $lt: (query, value) => value < query,
     $lte: (query, value) => value <= query,
-    $in: (query, value) => query.some(val => value.includes(val)),
-    $nin: (query, value) => !query.some(val => value.includes(val)),
+    $in: (query, value) => query.some(val => isEqual(val, value)),
+    $nin: (query, value) => !query.some(val => isEqual(val, value)),
     $and: (query, value) => query.every(clause => filter(clause)(value)),
     $or: (query, value) => query.some(clause => filter(clause)(value)),
     $not: (query, value) => !filter(query)(value),
@@ -37,13 +37,13 @@ const filterOps = {
 
     $mod: (query, value) => (value % query[0]) === query[1],
     $elemMatch: (query, value) => (!Array.isArray(value)) ? false : value.some(item => filter(query)(item)),
-    $all: (query, value) => (!Array.isArray(value)) ? false : query.every(q => value.includes(q)),
+    $all: (query, value) =>  (!Array.isArray(value)) ? false : isEqual(query, value),
     $size: (query, value) => Array.isArray(value) ? value.length === query : false,
     $where: function (query, value) { return query.call(value) }
 };
 
 // Aggregation operations
-const aggregateOps = {
+const expressionOps = {
     $add: (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a + b, 0),
     $subtract: (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a - b),
     $multiply: (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a * b, 1),
@@ -64,8 +64,8 @@ const aggregateOps = {
     $lt: ([a, b], context) => expression(a)(context) < expression(b)(context),
     $lte: ([a, b], context) => expression(a)(context) <= expression(b)(context),
 
-    $in: ([a, b], context) => expression(b)(context).includes(expression(a)(context)),
-    $nin: ([a, b], context) => !expression(b)(context).includes(expression(a)(context)),
+    $in: ([a, b], context) => expression(b)(context).some(val => isEqual(expression(a)(context), val)),
+    $nin: ([a, b], context) => !expression(b)(context).some(val => isEqual(expression(a)(context), val)),
 
     $and: (args, context) => args.every(arg => expression(arg)(context)),
     $or: (args, context) => args.some(arg => expression(arg)(context)),
@@ -106,7 +106,7 @@ const pipelineOps = {
             Object.entries(group).forEach(([key, values]) => {
                 if (key !== '_id') {
                     const [op] = Object.entries(accumulators[key])[0];
-                    group[key] = aggregateOps[op](values, {});
+                    group[key] = expressionOps[op](values, {});
                 }
             });
             return group;
@@ -124,7 +124,7 @@ const pipelineOps = {
 const add = (which, op, fn) => {
     if (which === 'filter') filterOps[op] = fn;
     if (which === 'pipeline') pipelineOps[op] = fn;
-    if (which === 'expression') aggregateOps[op] = fn;
+    if (which === 'expression') expressionOps[op] = fn;
 };
 
 // Filter function
@@ -147,8 +147,8 @@ const expression = (expr) => (context) => {
     }
     if (isObject(expr)) {
         const [operator, args] = Object.entries(expr)[0];
-        if (aggregateOps[operator]) {
-            return aggregateOps[operator](Array.isArray(args) ? args : [args], context);
+        if (expressionOps[operator]) {
+            return expressionOps[operator](Array.isArray(args) ? args : [args], context);
         }
     }
     return expr;
@@ -168,4 +168,4 @@ const aggregate = (pipeline) => (contextArray) => {
     }, contextArray);
 };
 
-export { add, aggregate, expression, filter };
+export { add, aggregate, expression, filter, isEqual };

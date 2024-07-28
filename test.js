@@ -1,15 +1,4 @@
-import { filter, expression, aggregate, add } from './src/index.js';
-
-const isEqual = (a, b) => {
-    if (a === b) return true;
-    if (a == null || b == null || typeof a !== typeof b) return false;
-    if (typeof a === 'object') {
-        if (Array.isArray(a) !== Array.isArray(b)) return false;
-        const keysA = Object.keys(a), keysB = Object.keys(b);
-        return keysA.length === keysB.length && keysA.every(key => isEqual(a[key], b[key]));
-    }
-    return false;
-};
+import { filter, expression, aggregate, add, isEqual } from './src/index.js';
 
 const describe = (title, call) => {
     console.log(title);
@@ -172,53 +161,63 @@ describe('Expression Test', () => {
 
     runTests([
         {
-            title: 'Expression: $add',
+            title: '$add',
             input: () => expression({ $add: ['$a', '$b'] })(context),
             expected: 15
         },
         {
-            title: 'Expression: $subtract',
+            title: '$subtract',
             input: () => expression({ $subtract: ['$b', '$a'] })(context),
             expected: 5
         },
         {
-            title: 'Expression: $multiply',
+            title: '$multiply',
             input: () => expression({ $multiply: ['$a', '$c'] })(context),
             expected: 100
         },
         {
-            title: 'Expression: $divide',
+            title: '$divide',
             input: () => expression({ $divide: ['$c', '$a'] })(context),
             expected: 4
         },
         {
-            title: 'Expression: $eq',
+            title: '$eq',
             input: () => expression({ $eq: ['$a', 5] })(context),
             expected: true
         },
         {
-            title: 'Expression: $ne',
+            title: '$ne',
             input: () => expression({ $ne: ['$a', 10] })(context),
             expected: true
         },
         {
-            title: 'Expression: $gt',
+            title: '$gt',
             input: () => expression({ $gt: ['$c', '$b'] })(context),
             expected: true
         },
         {
-            title: 'Expression: $lt',
+            title: '$lt',
             input: () => expression({ $lt: ['$a', '$b'] })(context),
             expected: true
         },
         {
-            title: 'Expression: $gte',
+            title: '$gte',
             input: () => expression({ $gte: ['$b', 10] })(context),
             expected: true
         },
         {
-            title: 'Expression: $lte',
+            title: '$lte',
             input: () => expression({ $lte: ['$a', 5] })(context),
+            expected: true
+        },
+        {
+            title: '$in',
+            input: () => expression({ $in: ['$a', [5, 6]] })(context),
+            expected: true
+        },
+        {
+            title: '$in',
+            input: () => expression({ $nin: ['$a', [4, 6]] })(context),
             expected: true
         }
     ]);
@@ -233,7 +232,7 @@ describe('Aggregate Test', () => {
 
     runTests([
         {
-            title: 'Aggregate: $group by age',
+            title: '$group by age',
             input: () => aggregate([{ $group: { _id: '$age', totalScore: { $sum: '$score' } } }])(data),
             expected: [
                 { _id: 25, totalScore: 80 },
@@ -242,7 +241,7 @@ describe('Aggregate Test', () => {
             ]
         },
         {
-            title: 'Aggregate: $sort by age',
+            title: '$sort by age',
             input: () => aggregate([{ $sort: { age: -1 } }])(data),
             expected: [
                 { name: 'Charlie', age: 35, score: 85 },
@@ -251,7 +250,7 @@ describe('Aggregate Test', () => {
             ]
         },
         {
-            title: 'Aggregate: $skip first item',
+            title: '$skip first item',
             input: () => aggregate([{ $skip: 1 }])(data),
             expected: [
                 { name: 'Bob', age: 30, score: 90 },
@@ -259,7 +258,7 @@ describe('Aggregate Test', () => {
             ]
         },
         {
-            title: 'Aggregate: $limit to two items',
+            title: '$limit to two items',
             input: () => aggregate([{ $limit: 2 }])(data),
             expected: [
                 { name: 'Alice', age: 25, score: 80 },
@@ -267,7 +266,7 @@ describe('Aggregate Test', () => {
             ]
         },
         {
-            title: 'Aggregate: $count total items',
+            title: '$count total items',
             input: () => aggregate([{ $count: 'total' }])(data),
             expected: [{ total: 3 }]
         }
@@ -304,7 +303,7 @@ describe('Add Operation Test', () => {
     runTests([
         // Test $subtract in aggregate
         {
-            title: 'Aggregate: $subtract',
+            title: '$subtract',
             input: () => aggregate([
                 { $project: { result: { $subtract: [100, '$score'] } } } // Subtract score from 100
             ])(data),
@@ -317,7 +316,7 @@ describe('Add Operation Test', () => {
 
         // Test $pow in aggregate
         {
-            title: 'Aggregate: $pow',
+            title: '$pow',
             input: () => aggregate([
                 { $project: { result: { $pow: ['$age', 2] } } } // Age squared
             ])(data),
@@ -339,14 +338,14 @@ describe('Add Operation Test', () => {
 
         // Test $mod in expression
         {
-            title: 'Expression: $mod',
+            title: '$mod',
             input: () => expression({ $mod: ['$age', 10] })(data[0]),
             expected: 5 // 25 % 10
         },
 
         // Test combined operations
         {
-            title: 'Complex Aggregate: $subtract, $pow, $project',
+            title: 'Complex $subtract, $pow, $project',
             input: () => aggregate([
                 { $project: { name: 1, ageSquared: { $pow: ['$age', 2] }, scoreDiff: { $subtract: [100, '$score'] } } }, // Project age squared and score difference
                 { $match: { scoreDiff: { $gt: 10 } } } // Filter where scoreDiff > 10
@@ -406,7 +405,7 @@ describe('Complex Aggregate Test', () => {
 
     runTests([
         {
-            title: 'Complex Aggregate: filter, project, sort, skip, limit, group',
+            title: 'Complex filter, project, sort, skip, limit, group',
             input: () => aggregate([
                 { $match: { city: 'New York' } }, // Filter
                 { $project: { name: 1, score: 1, ageGroup: { $cond: [{ $gte: ['$age', 30] }, '30+', 'under 30'] } } }, // Project
@@ -420,7 +419,7 @@ describe('Complex Aggregate Test', () => {
             ]
         },
         {
-            title: 'Complex Aggregate: multiple stages and expressions',
+            title: 'Complex multiple stages and expressions',
             input: () => aggregate([
                 { $match: { friends: { $elemMatch: { age: { $gte: 30 } } } } }, // Filter by friends' age using $elemMatch
                 { $project: { name: 1, totalScore: { $add: ['$score', 10] }, city: 1 } }, // Project with totalScore

@@ -300,16 +300,13 @@ console.log(
 );
 
 ```
-
-Here’s a `README.md` file specifically for the `add` function:
-
 ---
 
 # `add` Function
 
 ## Overview
 
-The `add` function allows you to dynamically add custom operators to the filtering, aggregation, and pipeline stages of your data processing operations. This feature is useful for extending the functionality of your data manipulation library with custom logic that can be applied to your datasets.
+The `add` function allows you to dynamically add custom operators to the filtering, expression, and pipeline stages of your data processing operations. This feature is useful for extending the functionality of your data manipulation library with custom logic that can be applied to your datasets.
 
 ## Function Signature
 
@@ -322,14 +319,14 @@ add(which, op, fn)
 - **`which`**: A string specifying the type of operation to which the custom function should be added. Valid values are:
   - `'filter'`: For adding custom filter operations.
   - `'pipeline'`: For adding custom pipeline stages.
-  - `'aggregate'`: For adding custom aggregation operations.
+  - `'expression'`: For adding custom expression operations.
 
 - **`op`**: A string representing the name of the custom operation or stage. This will be used to reference the custom operation in your queries or pipelines.
 
 - **`fn`**: A function implementing the custom logic for the operation. The signature of this function depends on the type of operation:
   - **Filter Function**: `(query, value) => boolean`
   - **Pipeline Function**: `(args, context) => result`
-  - **Aggregate Function**: `(args, context) => result`
+  - **Expression Function**: `(args, context) => result`
 
 ## Usage
 
@@ -422,10 +419,10 @@ const result = aggregate([{ $sumField: ['field'] }])(data);
 -   `$exists`: Element exists
 -   `$type`: Type of the value
 -   `$mod`: Mod
--	`$elemMatch`: Array element matches
--	`$all`: All elements matched in array
--	`$size`: Size of an array
--	`$where`: Custom function
+-	  `$elemMatch`: Array element matches
+-	  `$all`: All elements matched in array
+-	  `$size`: Size of an array
+-	  `$where`: Custom function
 
 ## Built-In Aggregation Operations
 

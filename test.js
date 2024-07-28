@@ -212,7 +212,7 @@ describe('Expression Test', () => {
         },
         {
             title: '$in',
-            input: () => expression({ $in: ['$a', [5, 6]] })(context),
+            input: () => expression({ $in: ['$a', 5] })(context),
             expected: true
         },
         {

@@ -36,8 +36,8 @@ const filterOps = {
     $type: (query, value) => typeof value === query,
 
     $mod: (query, value) => (value % query[0]) === query[1],
-    $elemMatch: (query, value) => !Array.isArray(value) ? false : value.some(item => filter(query)(item)),
-    $all: (query, value) => !Array.isArray(value) ? false : isEqual(query, value),
+    $elemMatch: (query, value) => (Array.isArray(value) ? value : [value]).some(item => filter(query)(item)),
+    $all: (query, value) => Array.isArray(value) && query.every((v) => value.some(item => filter(v)(item))),
     $size: (query, value) => Array.isArray(value) ? value.length === query : false,
     $where: function (query, value) { return query.call(value) }
 };

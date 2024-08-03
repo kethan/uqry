@@ -85,15 +85,25 @@ const expressionOps = {
 const pipelineOps = {
     $project: (projection, context) => {
         const result = {};
-        Object.entries(projection).forEach(([key, value]) => {
-            result[key] = value === 1 ? dlv(context, key) : expression(value)(context);
-        });
+        const excludeFields = Object.keys(projection).filter((v) => projection[v] === 0);
+        if (excludeFields.length) {
+            Object.keys(context).forEach((key) => {
+                if (!excludeFields.includes(key)) {
+                    result[key] = dlv(context, key);
+                }
+            });
+        } else {
+            Object.keys(projection).forEach((key) => {
+                result[key] = !(projection[key] === 1 || projection[key] === 0) ? expression(projection[key])(context)
+                    : dlv(context, key);
+            });
+        }
         return result;
-    },
+    },    
     $match: (criteria, context) => filter(criteria)(context) ? context : null,
     $group: ({ _id, ...accumulators }, contextArray) => {
         const groups = contextArray.reduce((acc, item) => {
-            const groupKey = expression(_id)(item);
+            const groupKey = _id === null ? null : expression(_id)(item);
             if (!acc[groupKey]) acc[groupKey] = { _id: groupKey };
             Object.entries(accumulators).forEach(([key, expr]) => {
                 if (!acc[groupKey][key]) acc[groupKey][key] = [];
@@ -155,17 +165,17 @@ const expression = (expr) => (context) => {
 };
 
 // Aggregate function
-const aggregate = (pipeline) => (contextArray) => {
-    return pipeline.reduce((currentContextArray, stage) => {
+const aggregate = (pipeline) => (docs) => {
+    return pipeline.reduce((currentDoc, stage) => {
         const [operator, args] = Object.entries(stage)[0];
         if (pipelineOps[operator]) {
-            if (['$group', '$sort', '$skip', '$limit', '$count'].includes(operator)) {
-                return pipelineOps[operator](args, currentContextArray);
+            if (['$project', '$match'].includes(operator)) {
+                return currentDoc.map(context => pipelineOps[operator](args, context)).filter(Boolean);
             } else {
-                return currentContextArray.map(context => pipelineOps[operator](args, context)).filter(Boolean);
+                return pipelineOps[operator](args, currentDoc);
             }
         }
-    }, contextArray);
+    }, docs);
 };
 
 export { add, aggregate, expression, filter, isEqual };

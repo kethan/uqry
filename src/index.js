@@ -3,7 +3,7 @@ const isEqual = (a, b) => {
     if (a === b) return true;
     if (a == null || b == null || typeof a !== typeof b) return false;
     if (typeof a === 'object') {
-        if (Array.isArray(a) !== Array.isArray(b)) return false;
+        if ((a.map) !== (b.map)) return false;
         const keysA = Object.keys(a), keysB = Object.keys(b);
         return keysA.length === keysB.length && keysA.every(key => isEqual(a[key], b[key]));
     }
@@ -15,6 +15,20 @@ const is$ = (obj) => typeof obj === 'string' && obj.startsWith('$');
 
 // Nested property access function
 const dlv = (obj, key) => (Array.isArray(key) ? key : key.split('.')).reduce((a, b) => (a ? a[b] : a), obj);
+
+export const dset = (obj, path, value) => {
+    const [key, ...rest] = path.map ? path : path.split('.');
+
+    if (rest.length === 0) {
+        return (obj.map)
+            ? [...obj.slice(0, key), value, ...obj.slice(Number(key) + 1)]
+            : { ...obj, [key]: value };
+    }
+
+    return (obj.map)
+        ? [...obj.slice(0, key), dset(obj[key] || {}, rest, value), ...obj.slice(Number(key) + 1)]
+        : { ...obj, [key]: dset(obj[key] || {}, rest, value) };
+};
 
 // Filter operations
 const filterOps = {
@@ -138,7 +152,7 @@ const pipelineOps = {
         return contextArray.flatMap(doc => {
             const array = dlv(doc, field);
             if (array === null) {
-                return preserveNullAndEmptyArrays ? [{ ...doc, [field]: null, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }] : [];
+                return preserveNullAndEmptyArrays ? [{ ...dset(doc, field, null), [field]: null, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }] : [];
             }
 
             if (array === undefined || (Array.isArray(array) && array.length === 0)) {
@@ -146,10 +160,9 @@ const pipelineOps = {
             }
 
             if (typeof array === "string") {
-                return [{ ...doc, [field]: array, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }];
+                return [{ ...dset(doc, field, array), ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }];
             }
-
-            return array.map((elem, index) => ({ ...doc, [field]: elem, ...(includeArrayIndex ? { [includeArrayIndex]: index } : {}) }));
+            return array.map((elem, index) => ({ ...dset(doc, field, elem), ...(includeArrayIndex ? { [includeArrayIndex]: index } : {}) }));
         });
     },
     $lookup: (args, contextArray) => {
@@ -510,3 +523,57 @@ console.log(aggregate([
             tags: ["a", "b"]
         }]
     ));
+
+console.log(aggregate([
+    // First Stage
+    { $unwind: "$items" },
+    // Second Stage
+    { $unwind: "$items.tags" },
+    // Third Stage
+    {
+        $group:
+        {
+            _id: "$items.tags",
+            totalSalesAmount:
+            {
+                $sum: { $multiply: ["$items.price", "$items.quantity"] }
+            }
+        }
+    }
+
+])([
+    {
+        _id: "1",
+        "items": [
+            {
+                "name": "pens",
+                "tags": ["writing", "office", "school", "stationary"],
+                "price": 12.00,
+                "quantity": 5
+            },
+            {
+                "name": "envelopes",
+                "tags": ["stationary", "office"],
+                "price": 19.95,
+                "quantity": 8
+            }
+        ]
+    },
+    {
+        _id: "2",
+        "items": [
+            {
+                "name": "laptop",
+                "tags": ["office", "electronics"],
+                "price": 800.00,
+                "quantity": 1
+            },
+            {
+                "name": "notepad",
+                "tags": ["stationary", "school"],
+                "price": 14.95,
+                "quantity": 3
+            }
+        ]
+    }
+]));

@@ -85,15 +85,27 @@ const expressionOps = {
 const pipelineOps = {
     $project: (projection, context) => {
         const result = {};
-        Object.entries(projection).forEach(([key, value]) => {
-            result[key] = value === 1 ? dlv(context, key) : expression(value)(context);
-        });
+        const excludeFields = Object.keys(projection).filter((v) => projection[v] === 0);
+        if (excludeFields.length) {
+            Object.keys(context).forEach((key) => {
+                if (!excludeFields.includes(key)) {
+                    result[key] = dlv(context, key)
+                }
+            });
+        } else {
+            Object.keys(projection).forEach((key) => {
+                result[key] = !(projection[key] === 1 || projection[key] === 0) ? expression(projection[key])(context)
+                    : dlv(context, key)
+            });
+        }
         return result;
     },
     $match: (criteria, context) => filter(criteria)(context) ? context : null,
     $group: ({ _id, ...accumulators }, contextArray) => {
         const groups = contextArray.reduce((acc, item) => {
-            const groupKey = expression(_id)(item);
+            // const groupKey = expression(_id)(item);
+            const groupKey = _id === null ? null : expression(_id)(item);
+
             if (!acc[groupKey]) acc[groupKey] = { _id: groupKey };
             Object.entries(accumulators).forEach(([key, expr]) => {
                 if (!acc[groupKey][key]) acc[groupKey][key] = [];
@@ -119,6 +131,52 @@ const pipelineOps = {
     $skip: (count, contextArray) => [...contextArray].slice(count),
     $limit: (count, contextArray) => [...contextArray].slice(0, count),
     $count: (fieldName, contextArray) => [{ [fieldName]: contextArray.length }],
+    $unwind: (args, contextArray) => {
+        const field = typeof args === 'string' ? args.slice(1) : args.path.slice(1);
+        const includeArrayIndex = args.includeArrayIndex || null;
+        const preserveNullAndEmptyArrays = args.preserveNullAndEmptyArrays || false;
+        return contextArray.flatMap(doc => {
+            const array = dlv(doc, field);
+            if (array === null) {
+                return preserveNullAndEmptyArrays ? [{ ...doc, [field]: null, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }] : [];
+            }
+
+            if (array === undefined || (Array.isArray(array) && array.length === 0)) {
+                return preserveNullAndEmptyArrays ? [(delete doc[field], { ...doc, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) })] : []
+            }
+
+            if (typeof array === "string") {
+                return [{ ...doc, [field]: array, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }];
+            }
+
+            return array.map((elem, index) => ({ ...doc, [field]: elem, ...(includeArrayIndex ? { [includeArrayIndex]: index } : {}) }));
+        });
+    },
+    $lookup: (args, contextArray) => {
+        const { from, localField, let: letVars, foreignField, as, pipeline } = args;
+        return contextArray.map(doc => {
+            let joinedDocs = [];
+
+            if (localField && foreignField) {
+                const localValue = dlv(doc, localField);
+                const fromCollection = from;
+                joinedDocs = fromCollection.filter(foreignDoc => dlv(foreignDoc, foreignField) === localValue);
+            } else if (pipeline) {
+                let v, localVars = {};
+                Object.keys(letVars).forEach(varName => {
+                    localVars[`$$${varName}`] = dlv(doc, letVars[varName].slice(1));
+                });
+                joinedDocs = aggregate(pipeline.map(pipe =>
+                    JSON.parse(
+                        JSON.stringify(pipe).replace(/\"\$\$\w+\"/g, (match) =>
+                            (v = localVars[match.replace(/\"/g, "")], typeof v === "string" ? `"${v}"` : v))
+                    )
+                )
+                )(from);
+            }
+            return { ...doc, [as]: joinedDocs };
+        });
+    }
 };
 
 const add = (which, op, fn) => {
@@ -155,17 +213,300 @@ const expression = (expr) => (context) => {
 };
 
 // Aggregate function
-const aggregate = (pipeline) => (contextArray) => {
-    return pipeline.reduce((currentContextArray, stage) => {
+const aggregate = (pipeline) => (docs) => {
+    return pipeline.reduce((currentDoc, stage) => {
         const [operator, args] = Object.entries(stage)[0];
         if (pipelineOps[operator]) {
-            if (['$group', '$sort', '$skip', '$limit', '$count'].includes(operator)) {
-                return pipelineOps[operator](args, currentContextArray);
+            if (['$project', '$match'].includes(operator)) {
+                return currentDoc.map(context => pipelineOps[operator](args, context)).filter(Boolean);
             } else {
-                return currentContextArray.map(context => pipelineOps[operator](args, context)).filter(Boolean);
+                return pipelineOps[operator](args, currentDoc);
             }
         }
-    }, contextArray);
+    }, docs);
 };
 
 export { filter, expression, aggregate, add, isEqual };
+
+
+// console.log(aggregate
+//     ([{
+//         $unwind: { path: '$items', includeArrayIndex: "index", preserveNullAndEmptyArrays: true }
+//         // $lookup: {
+//         //     from: [
+//         //         { "_id": 1, "item": "apple", "price": 1.00 },
+//         //         { "_id": 2, "item": "banana", "price": 0.50 }
+//         //     ], localField: 'itemId', foreignField: '_id', as: 'itemDetails'
+//         // }
+
+//     }])
+//     ([
+//         {
+//             "_id": 1,
+//             "orderDate": "2024-08-01",
+//             data: {
+//                 "items": [
+//                     "apple",
+//                     "banana"
+//                 ]
+//             },
+//             "items": [
+//                 "apple",
+//                 "banana"
+//             ]
+//         },
+//         {
+//             "_id": 2,
+//             "orderDate": "2024-08-02",
+//             data: {
+//                 "items": [
+//                     "orange",
+//                     "kiwi"
+//                 ]
+//             },
+//             "items": [
+//                 "orange",
+//                 "kiwi"
+//             ]
+//         },
+//         {
+//             "_id": 3,
+//             "orderDate": "2024-08-02",
+//             data: {
+//                 "items": []
+//             },
+//             "items": "a"
+//         },
+//         {
+//             "_id": 4,
+//             "orderDate": "2024-08-02",
+//             data: {
+//                 "items": [
+//                     null,
+//                     null
+//                 ]
+//             },
+//             "items": [
+//                 null,
+//                 null
+//             ]
+//         },
+//         {
+//             "_id": 5,
+//             "orderDate": "2024-08-02",
+//             data: {
+//                 "items": null
+//             },
+//             items: null
+//         },
+//         {
+//             "_id": 6,
+//             "orderDate": "2024-08-02"
+//         }
+//     ]));
+
+
+const orders = [
+    { "_id": 1, "item": "almonds", "price": 12, "ordered": 2 },
+    { "_id": 2, "item": "pecans", "price": 20, "ordered": 1 },
+    { "_id": 3, "item": "cookies", "price": 10, "ordered": 60 }
+]
+
+const warehouses = [
+    { "_id": 1, "stock_item": "almonds", warehouse: "A", "instock": 120 },
+    { "_id": 2, "stock_item": "pecans", warehouse: "A", "instock": 80 },
+    { "_id": 3, "stock_item": "almonds", warehouse: "B", "instock": 60 },
+    { "_id": 4, "stock_item": "cookies", warehouse: "B", "instock": 40 },
+    { "_id": 5, "stock_item": "cookies", warehouse: "A", "instock": 80 }
+]
+
+console.log(JSON.stringify(aggregate([{
+    $lookup:
+    {
+        from: warehouses,
+        let: { order_item: "$item", order_qty: "$ordered" },
+        // localField: '_id', foreignField: '_id',
+        as: "stockdata",
+        pipeline: [
+            {
+                $match:
+                {
+                    $expr:
+                    {
+                        $and:
+                            [
+                                { $eq: ["$stock_item", "$$order_item"] },
+                                { $gte: ["$instock", "$$order_qty"] }
+                            ]
+                    }
+                }
+            },
+            { $project: { stock_item: 0, _id: 0 } }
+        ],
+
+    }
+}])(orders), null, 2));
+
+// const orders = [{ "_id": 1, "item": "almonds", "price": 12, "ordered": 2 },
+// { "_id": 2, "item": "pecans", "price": 20, "ordered": 1 },
+// { "_id": 3, "item": "cookies", "price": 10, "ordered": 60 }];
+
+// const warehouses = [
+//     { "_id" : 1, "stock_item" : "almonds", warehouse: "A", "instock" : 120 },
+//     { "_id" : 2, "stock_item" : "pecans", warehouse: "A", "instock" : 80 },
+//     { "_id" : 3, "stock_item" : "almonds", warehouse: "B", "instock" : 60 },
+//     { "_id" : 4, "stock_item" : "cookies", warehouse: "B", "instock" : 40 },
+//     { "_id" : 5, "stock_item" : "cookies", warehouse: "A", "instock" : 80 }
+//   ];
+
+// const lookupArgs = {
+//     from: products,
+//     localField: 'productId',
+//     foreignField: '_id',
+//     as: 'productDetails',
+//     pipeline: [
+//         { $match: { $expr: { $eq: ['$category', 'Electronics'] } } }, // Filter by category
+//         { $addFields: { quantityFromOrder: { $let: { vars: { quantity: '$$quantity' }, in: '$$quantity' } } } }, // Add quantity from `let`
+//         { $project: { name: 1, price: 1, quantityFromOrder: 1 } } // Project fields
+//     ],
+//     let: { quantity: "$quantity" } // Pass `quantity` from the `orders` document to the pipeline
+// };
+
+// const result = $lookup({
+//     from: warehouses,
+//     let: { order_item: "$item", order_qty: "$ordered" },
+//     pipeline: [
+//        { $match:
+//           { $expr:
+//              { $and:
+//                 [
+//                   { $eq: [ "$stock_item",  "$$order_item" ] },
+//                   { $gte: [ "$instock", "$$order_qty" ] }
+//                 ]
+//              }
+//           }
+//        },
+//        { $project: { stock_item: 0, _id: 0 } }
+//     ],
+//     as: "stockdata"
+//   }, orders);
+
+// console.log(result);
+
+// console.log(JSON.stringify(aggregate([{
+//     $lookup: {
+//         from: [
+//             { "_id": 1, "item": "apple", "price": 1.00 },
+//             { "_id": 2, "item": "banana", "price": 0.50 }
+//         ], localField: 'itemId', foreignField: '_id', as: 'itemDetails'
+//     }
+// }])([
+//     { "_id": 1, "orderDate": "2024-08-01", "itemId": 1 },
+//     { "_id": 2, "orderDate": "2024-08-02", "itemId": 2 }
+// ]), null, 2));
+
+
+
+// console.log(aggregate(
+//     [
+//         {
+//             $match:
+//             {
+//                 $expr:
+//                 {
+//                     $and:
+//                         [
+//                             { $eq: ["$stock_item", "almonds"] },
+//                             { $gte: ["$instock", 60] }
+//                         ]
+//                 }
+//             }
+//         },
+//         { $project: { stock_item: 0, _id: 0 } }
+//     ]
+// )(
+//     [
+//         { "_id": 1, "stock_item": "almonds", warehouse: "A", "instock": 120 },
+//         { "_id": 2, "stock_item": "pecans", warehouse: "A", "instock": 80 },
+//         { "_id": 3, "stock_item": "almonds", warehouse: "B", "instock": 60 },
+//         { "_id": 4, "stock_item": "cookies", warehouse: "B", "instock": 40 },
+//         { "_id": 5, "stock_item": "cookies", warehouse: "A", "instock": 80 }
+//     ]
+// ));
+
+
+
+const users = [
+    { userId: 1, name: 'Alice' },
+    { userId: 2, name: 'Bob' },
+];
+
+const orders1 = [
+    { orderId: 101, userId: 1, amount: 50, stock_item: 'item1', instock: 30 },
+    { orderId: 102, userId: 2, amount: 75, stock_item: 'item2', instock: 15 },
+    { orderId: 103, userId: 1, amount: 100, stock_item: 'item1', instock: 20 },
+];
+
+const pipeline = [
+    {
+        $lookup: {
+            from: orders1,
+            let: { userId: '$userId' },
+            pipeline: [
+                {
+                    $match: {
+                        $expr: {
+                            $and: [
+                                { $eq: ['$userId', '$$userId'] },
+                                { $gte: ['$instock', 20] }
+                            ]
+                        }
+                    }
+                },
+                { $project: { orderId: 1, amount: 1, stock_item: 1, instock: 1 } }
+            ],
+            as: 'userOrders'
+        }
+    },
+    {
+        $project: {
+            name: 1,
+            userOrders: 1
+        }
+    }
+];
+
+
+
+console.log(JSON.stringify(aggregate(pipeline)(users), null, 2))
+
+
+
+console.log(aggregate([
+
+    // {
+    //     $addFields: {
+    //         noOfTags: {
+    //             $size: "$tags"
+    //         }
+    //     }
+    // }
+    { $unwind: "$tags" },
+    { $group: { _id: '$_id', noOfTags: { $sum: 1 } } },
+    { $group: { _id: null, avg: { $avg: "$noOfTags" } } },
+])
+    (
+        [{
+            _id: 1,
+            name: "John Doe",
+            age: 30,
+            tags: ["programming", "hiking"]
+        },
+
+        {
+            _id: 2,
+            name: "Jack Doe",
+            age: 40,
+            tags: ["a", "b"]
+        }]
+    ));

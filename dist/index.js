@@ -38,7 +38,7 @@ const filterOps = {
     $mod: (query, value) => (value % query[0]) === query[1],
     $elemMatch: (query, value) => (Array.isArray(value) ? value : [value]).some(item => filter(query)(item)),
     $all: (query, value) => Array.isArray(value) && query.every((v) => value.some(item => filter(v)(item))),
-    $size: (query, value) => Array.isArray(value) ? value.length === query : false,
+    $size: (query, value) =>  Array.isArray(value) ? value.length === query : false,
     $where: function (query, value) { return query.call(value) }
 };
 
@@ -119,6 +119,33 @@ const pipelineOps = {
     $skip: (count, contextArray) => [...contextArray].slice(count),
     $limit: (count, contextArray) => [...contextArray].slice(0, count),
     $count: (fieldName, contextArray) => [{ [fieldName]: contextArray.length }],
+    $unwind: (args, contextArray) => {
+        const field = typeof args === 'string' ? args.slice(1) : args.path.slice(1);
+        const includeArrayIndex = args.includeArrayIndex || null;
+        const preserveNullAndEmptyArrays = args.preserveNullAndEmptyArrays || false;
+        return contextArray.flatMap(doc => {
+            const array = dlv(doc, field);
+            if (array === null) {
+                return preserveNullAndEmptyArrays ? [{ ...doc, [field]: null, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }] : [];
+            }
+
+            if (array === undefined || (Array.isArray(array) && array.length === 0)) {
+                return preserveNullAndEmptyArrays ? [(delete doc[field], { ...doc, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) })] : []
+            }
+
+            if (typeof array === "string") {
+                return [{ ...doc, [field]: array, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }];
+            }
+
+            return (array).map((elem, index) => ({ ...doc, [field]: elem, ...(includeArrayIndex ? { [includeArrayIndex]: index } : {}) }));
+        });
+    },
+    $lookup: (args, contextArray) => {
+        const { from, localField, foreignField, as } = args;
+        return contextArray.map(doc => ({
+            ...doc, [as]: from.filter(foreignDoc => doc[localField] === foreignDoc[foreignField])
+        }))
+    }
 };
 
 const add = (which, op, fn) => {
@@ -159,13 +186,102 @@ const aggregate = (pipeline) => (contextArray) => {
     return pipeline.reduce((currentContextArray, stage) => {
         const [operator, args] = Object.entries(stage)[0];
         if (pipelineOps[operator]) {
-            if (['$group', '$sort', '$skip', '$limit', '$count'].includes(operator)) {
-                return pipelineOps[operator](args, currentContextArray);
-            } else {
+            if (['$project', '$match'].includes(operator))
                 return currentContextArray.map(context => pipelineOps[operator](args, context)).filter(Boolean);
-            }
+            else
+                return pipelineOps[operator](args, currentContextArray);
         }
     }, contextArray);
 };
+
+
+// console.log(aggregate
+//     ([{
+//         $unwind: { path: '$items', includeArrayIndex: "index", preserveNullAndEmptyArrays: true }
+//         // $lookup: {
+//         //     from: [
+//         //         { "_id": 1, "item": "apple", "price": 1.00 },
+//         //         { "_id": 2, "item": "banana", "price": 0.50 }
+//         //     ], localField: 'itemId', foreignField: '_id', as: 'itemDetails'
+//         // }
+
+//     }])
+//     ([
+//         {
+//             "_id": 1,
+//             "orderDate": "2024-08-01",
+//             data: {
+//                 "items": [
+//                     "apple",
+//                     "banana"
+//                 ]
+//             },
+//             "items": [
+//                 "apple",
+//                 "banana"
+//             ]
+//         },
+//         {
+//             "_id": 2,
+//             "orderDate": "2024-08-02",
+//             data: {
+//                 "items": [
+//                     "orange",
+//                     "kiwi"
+//                 ]
+//             },
+//             "items": [
+//                 "orange",
+//                 "kiwi"
+//             ]
+//         },
+//         {
+//             "_id": 3,
+//             "orderDate": "2024-08-02",
+//             data: {
+//                 "items": []
+//             },
+//             "items": "a"
+//         },
+//         {
+//             "_id": 4,
+//             "orderDate": "2024-08-02",
+//             data: {
+//                 "items": [
+//                     null,
+//                     null
+//                 ]
+//             },
+//             "items": [
+//                 null,
+//                 null
+//             ]
+//         },
+//         {
+//             "_id": 5,
+//             "orderDate": "2024-08-02",
+//             data: {
+//                 "items": null
+//             },
+//             items: null
+//         },
+//         {
+//             "_id": 6,
+//             "orderDate": "2024-08-02"
+//         }
+//     ]));
+
+
+// console.log(JSON.stringify(aggregate([{
+//     $lookup: {
+//         from: [
+//             { "_id": 1, "item": "apple", "price": 1.00 },
+//             { "_id": 2, "item": "banana", "price": 0.50 }
+//         ], localField: 'itemId', foreignField: '_id', as: 'itemDetails'
+//     }
+// }])([
+//     { "_id": 1, "orderDate": "2024-08-01", "itemId": 1 },
+//     { "_id": 2, "orderDate": "2024-08-02", "itemId": 2 }
+// ]), null, 2));
 
 export { add, aggregate, expression, filter, isEqual };

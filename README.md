@@ -419,10 +419,10 @@ const result = aggregate([{ $sumField: ['field'] }])(data);
 -   `$exists`: Element exists
 -   `$type`: Type of the value
 -   `$mod`: Mod
--	  `$elemMatch`: Array element matches
--	  `$all`: All elements matched in array
--	  `$size`: Size of an array
--	  `$where`: Custom function
+-   `$elemMatch`: Array element matches
+-   `$all`: All elements matched in array
+-   `$size`: Size of an array
+-   `$where`: Custom function
 
 ## Built-In Aggregation Operations
 

@@ -10,10 +10,20 @@ This module provides functionality for filtering and aggregating data based on M
 
 Install the module using npm:
 
-```sh
-npm install uqry
-yarn add uqry
+**yarn**: `yarn add uqry`
+
+**npm**: `npm i uqry`
+
+**cdn**: https://unpkg.com/uqry
+
+**module**: https://unpkg.com/uqry?module
+
+## lite version
+
+```javascript
+import { filter, add } from "uqry/lite";
 ```
+[![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/lite.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry/lite) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/lite.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry/lite)
 
 ## Usage
 

@@ -1,7 +1,7 @@
 {
 	"name": "uqry",
 	"description": "filtering and aggregating data based on MongoDB-like query syntax",
-	"version": "0.0.10",
+	"version": "0.0.11",
 	"type": "module",
 	"source": "./src/index.js",
 	"main": "./dist/index.cjs",
@@ -9,8 +9,17 @@
 	"unpkg": "./dist/index.min.js",
 	"umd:main": "./dist/index.umd.js",
 	"exports": {
-		"require": "./dist/index.cjs",
-		"default": "./dist/index.js"
+		".": {
+			"import": "./dist/index.js",
+			"default": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./lite": {
+			"import": "./dist/lite.js",
+			"default": "./dist/lite.js",
+			"require": "./dist/lite.cjs"
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist"

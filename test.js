@@ -284,13 +284,13 @@ describe('Add Operation Test', () => {
 
     add('pipeline', '$customStage1', (args, context) => {
         // Adds a new field `newField` with a static value to each document
-        return { ...context, newField: 'addedValue' };
+        return context.map(item => ({...item, newField: 'addedValue'}))
     });
-
+    
     add('pipeline', '$customStage2', (args, context) => {
         // Multiplies the `score` field by a constant
-        const multiplier = args[0];
-        return { ...context, score: context.score * multiplier };
+        const multiplier = args[0];        
+        return context.map(item => ({...item,  score: (item.score * multiplier)}))
     });
 
     runTests([

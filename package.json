@@ -1,7 +1,7 @@
 {
 	"name": "uqry",
 	"description": "filtering and aggregating data based on MongoDB-like query syntax",
-	"version": "0.0.12",
+	"version": "0.0.13",
 	"type": "module",
 	"source": "./src/index.js",
 	"main": "./dist/index.cjs",

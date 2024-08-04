@@ -15,14 +15,15 @@
 			"require": "./dist/index.cjs"
 		},
 		"./lite": {
-			"import": "./dist/lite.js",
-			"default": "./dist/lite.js",
-			"require": "./dist/lite.cjs"
+			"import": "./lite/index.js",
+			"default": "./lite/index.js",
+			"require": "./lite/index.cjs"
 		},
 		"./package.json": "./package.json"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"lite"
 	],
 	"repository": {
 		"type": "git",
@@ -30,10 +31,12 @@
 	},
 	"scripts": {
 		"build": "rollup --config rollup.config.js",
-		"test": "node test.js"
+		"test": "node test.js",
+		"prepare": "husky"
 	},
 	"devDependencies": {
 		"@rollup/plugin-terser": "^0.4.4",
+		"husky": "^9.1.4",
 		"rollup": "^4.19.0"
 	},
 	"keywords": [
@@ -50,6 +53,5 @@
 	"bugs": {
 		"url": "https://github.com/kethan/uqry/issues"
 	},
-	"homepage": "https://github.com/kethan/uqry#readme",
-	"dependencies": {}
+	"homepage": "https://github.com/kethan/uqry#readme"
 }

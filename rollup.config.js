@@ -32,5 +32,6 @@ const resolve = (pkg, input = "src/index", output = "dist/index") => ({
 
 export default [
 	resolve("uqry"),
-	resolve("uqry", "src/lite", "lite/index")
+	resolve("uqry", "src/lite", "lite/index"),
+	resolve("uqry", "src/full", "full/index")
 ]

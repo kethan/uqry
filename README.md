@@ -26,6 +26,19 @@ Install the module using npm:
 ```javascript
 import { filter, add } from "uqry/lite";
 ```
+
+
+## full version
+
+[![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/full/index.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry/full) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/full/index.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry/full)
+
+
+It has extra $addFields, $unwind and $loopup stages.
+
+```javascript
+import { filter, add, expression, aggregate, add } from "uqry/full";
+```
+
 ## Usage
 
 ### Importing the Module

@@ -103,13 +103,13 @@ const stageOps = {
         if (excludeFields.length) {
             Object.keys(context).forEach((key) => {
                 if (!excludeFields.includes(key)) {
-                    result[key] = dlv(context, key)
+                    result[key] = dlv(context, key);
                 }
             });
         } else {
             Object.keys(projection).forEach((key) => {
                 result[key] = !(projection[key] === 1 || projection[key] === 0) ? expression(projection[key])(context)
-                    : dlv(context, key)
+                    : dlv(context, key);
             });
         }
         return result;
@@ -207,7 +207,7 @@ const add = (which, op, fn) => {
     if (which === 'filter') filterOps[op] = fn;
     if (which === 'stage') stageOps[op] = fn;
     if (which === 'expression') expressionOps[op] = fn;
-}
+};
 
 // Filter function
 const filter = (query) => (value) => {
@@ -251,4 +251,4 @@ const aggregate = (pipelines) => (docs) => {
     }, docs);
 };
 
-export { filter, expression, aggregate, add, isEqual };
+export { add, aggregate, expression, filter, isEqual };

@@ -53,10 +53,10 @@ const expressionOps = {
 
     $concat: (args, context) => args.map(arg => expression(arg)(context)).join(''),
 
-    $min: (args, context) => Math.min(...args.map(arg => expression(arg)(context))),
-    $max: (args, context) => Math.max(...args.map(arg => expression(arg)(context))),
-    $avg: (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a + b, 0) / args.length,
-    $sum: (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a + b, 0),
+    $min: (args, context) => Math.min(...args.flatMap(arg => expression(arg)(context))),
+    $max: (args, context) => Math.max(...args.flatMap(arg => expression(arg)(context))),
+    $avg: (args, context) => args.flatMap(arg => expression(arg)(context)).reduce((a, b) => a + b, 0) / args.length,
+    $sum: (args, context) => args.flatMap(arg => expression(arg)(context)).reduce((a, b) => a + b, 0),
     $cond: ([condition, trueExpr, falseExpr], context) => expression(condition)(context) ? expression(trueExpr)(context) : expression(falseExpr)(context),
 
     $eq: ([a, b], context) => isEqual(expression(a)(context), expression(b)(context)),

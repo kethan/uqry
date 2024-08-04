@@ -82,7 +82,7 @@ const expressionOps = {
 };
 
 // Pipeline stages
-const pipelineOps = {
+const stagesOps = {
     $project: (projection, context) => {
         const result = {};
         const excludeFields = Object.keys(projection).filter((v) => projection[v] === 0);
@@ -133,7 +133,7 @@ const pipelineOps = {
 
 const add = (which, op, fn) => {
     if (which === 'filter') filterOps[op] = fn;
-    if (which === 'pipeline') pipelineOps[op] = fn;
+    if (which === 'stage') stagesOps[op] = fn;
     if (which === 'expression') expressionOps[op] = fn;
 };
 
@@ -165,14 +165,14 @@ const expression = (expr) => (context) => {
 };
 
 // Aggregate function
-const aggregate = (pipeline) => (docs) => {
-    return pipeline.reduce((currentDoc, stage) => {
+const aggregate = (pipelines) => (docs) => {
+    return pipelines.reduce((currentDoc, stage) => {
         const [operator, args] = Object.entries(stage)[0];
-        if (pipelineOps[operator]) {
+        if (stagesOps[operator]) {
             if (['$project', '$match'].includes(operator)) {
-                return currentDoc.map(context => pipelineOps[operator](args, context)).filter(Boolean);
+                return currentDoc.map(context => stagesOps[operator](args, context)).filter(Boolean);
             } else {
-                return pipelineOps[operator](args, currentDoc);
+                return stagesOps[operator](args, currentDoc);
             }
         }
     }, docs);

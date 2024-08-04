@@ -1,19 +1,29 @@
 {
 	"name": "uqry",
 	"description": "filtering and aggregating data based on MongoDB-like query syntax",
-	"version": "0.0.9",
+	"version": "0.0.14",
 	"type": "module",
 	"source": "./src/index.js",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"unpkg": "./dist/index.min.js",
-	"umd:main": "./dist/index.umd.js",
+	"umd:main": "dist/index.umd.js",
 	"exports": {
-		"require": "./dist/index.cjs",
-		"default": "./dist/index.js"
+		".": {
+			"import": "./dist/index.js",
+			"default": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./lite": {
+			"import": "./lite/index.js",
+			"default": "./lite/index.js",
+			"require": "./lite/index.cjs"
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"lite"
 	],
 	"repository": {
 		"type": "git",
@@ -21,10 +31,12 @@
 	},
 	"scripts": {
 		"build": "rollup --config rollup.config.js",
-		"test": "node test.js"
+		"test": "node test.js && node test.lite.js",
+		"prepare": "husky"
 	},
 	"devDependencies": {
 		"@rollup/plugin-terser": "^0.4.4",
+		"husky": "^9.1.4",
 		"rollup": "^4.19.0"
 	},
 	"keywords": [
@@ -41,6 +53,5 @@
 	"bugs": {
 		"url": "https://github.com/kethan/uqry/issues"
 	},
-	"homepage": "https://github.com/kethan/uqry#readme",
-	"dependencies": {}
+	"homepage": "https://github.com/kethan/uqry#readme"
 }

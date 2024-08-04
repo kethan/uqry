@@ -40,7 +40,7 @@ const filterOps = {
     $mod: (query, value) => (value % query[0]) === query[1],
     $elemMatch: (query, value) => (Array.isArray(value) ? value : [value]).some(item => filter(query)(item)),
     $all: (query, value) => Array.isArray(value) && query.every((v) => value.some(item => filter(v)(item))),
-    $size: (query, value) =>  Array.isArray(value) ? value.length === query : false,
+    $size: (query, value) => Array.isArray(value) ? value.length === query : false,
     $where: function (query, value) { return query.call(value) }
 };
 
@@ -84,18 +84,28 @@ const expressionOps = {
 };
 
 // Pipeline stages
-const pipelineOps = {
+const stagesOps = {
     $project: (projection, context) => {
         const result = {};
-        Object.entries(projection).forEach(([key, value]) => {
-            result[key] = value === 1 ? dlv(context, key) : expression(value)(context);
-        });
+        const excludeFields = Object.keys(projection).filter((v) => projection[v] === 0);
+        if (excludeFields.length) {
+            Object.keys(context).forEach((key) => {
+                if (!excludeFields.includes(key)) {
+                    result[key] = dlv(context, key);
+                }
+            });
+        } else {
+            Object.keys(projection).forEach((key) => {
+                result[key] = !(projection[key] === 1 || projection[key] === 0) ? expression(projection[key])(context)
+                    : dlv(context, key);
+            });
+        }
         return result;
-    },
+    },    
     $match: (criteria, context) => filter(criteria)(context) ? context : null,
     $group: ({ _id, ...accumulators }, contextArray) => {
         const groups = contextArray.reduce((acc, item) => {
-            const groupKey = expression(_id)(item);
+            const groupKey = _id === null ? null : expression(_id)(item);
             if (!acc[groupKey]) acc[groupKey] = { _id: groupKey };
             Object.entries(accumulators).forEach(([key, expr]) => {
                 if (!acc[groupKey][key]) acc[groupKey][key] = [];
@@ -121,38 +131,11 @@ const pipelineOps = {
     $skip: (count, contextArray) => [...contextArray].slice(count),
     $limit: (count, contextArray) => [...contextArray].slice(0, count),
     $count: (fieldName, contextArray) => [{ [fieldName]: contextArray.length }],
-    $unwind: (args, contextArray) => {
-        const field = typeof args === 'string' ? args.slice(1) : args.path.slice(1);
-        const includeArrayIndex = args.includeArrayIndex || null;
-        const preserveNullAndEmptyArrays = args.preserveNullAndEmptyArrays || false;
-        return contextArray.flatMap(doc => {
-            const array = dlv(doc, field);
-            if (array === null) {
-                return preserveNullAndEmptyArrays ? [{ ...doc, [field]: null, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }] : [];
-            }
-
-            if (array === undefined || (Array.isArray(array) && array.length === 0)) {
-                return preserveNullAndEmptyArrays ? [(delete doc[field], { ...doc, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) })] : []
-            }
-
-            if (typeof array === "string") {
-                return [{ ...doc, [field]: array, ...(includeArrayIndex ? { [includeArrayIndex]: null } : {}) }];
-            }
-
-            return (array).map((elem, index) => ({ ...doc, [field]: elem, ...(includeArrayIndex ? { [includeArrayIndex]: index } : {}) }));
-        });
-    },
-    $lookup: (args, contextArray) => {
-        const { from, localField, foreignField, as } = args;
-        return contextArray.map(doc => ({
-            ...doc, [as]: from.filter(foreignDoc => doc[localField] === foreignDoc[foreignField])
-        }))
-    }
 };
 
 const add = (which, op, fn) => {
     if (which === 'filter') filterOps[op] = fn;
-    if (which === 'pipeline') pipelineOps[op] = fn;
+    if (which === 'stage') stagesOps[op] = fn;
     if (which === 'expression') expressionOps[op] = fn;
 };
 
@@ -184,107 +167,18 @@ const expression = (expr) => (context) => {
 };
 
 // Aggregate function
-const aggregate = (pipeline) => (contextArray) => {
-    return pipeline.reduce((currentContextArray, stage) => {
+const aggregate = (pipelines) => (docs) => {
+    return pipelines.reduce((currentDoc, stage) => {
         const [operator, args] = Object.entries(stage)[0];
-        if (pipelineOps[operator]) {
-            if (['$project', '$match'].includes(operator))
-                return currentContextArray.map(context => pipelineOps[operator](args, context)).filter(Boolean);
-            else
-                return pipelineOps[operator](args, currentContextArray);
+        if (stagesOps[operator]) {
+            if (['$project', '$match'].includes(operator)) {
+                return currentDoc.map(context => stagesOps[operator](args, context)).filter(Boolean);
+            } else {
+                return stagesOps[operator](args, currentDoc);
+            }
         }
-    }, contextArray);
+    }, docs);
 };
-
-
-// console.log(aggregate
-//     ([{
-//         $unwind: { path: '$items', includeArrayIndex: "index", preserveNullAndEmptyArrays: true }
-//         // $lookup: {
-//         //     from: [
-//         //         { "_id": 1, "item": "apple", "price": 1.00 },
-//         //         { "_id": 2, "item": "banana", "price": 0.50 }
-//         //     ], localField: 'itemId', foreignField: '_id', as: 'itemDetails'
-//         // }
-
-//     }])
-//     ([
-//         {
-//             "_id": 1,
-//             "orderDate": "2024-08-01",
-//             data: {
-//                 "items": [
-//                     "apple",
-//                     "banana"
-//                 ]
-//             },
-//             "items": [
-//                 "apple",
-//                 "banana"
-//             ]
-//         },
-//         {
-//             "_id": 2,
-//             "orderDate": "2024-08-02",
-//             data: {
-//                 "items": [
-//                     "orange",
-//                     "kiwi"
-//                 ]
-//             },
-//             "items": [
-//                 "orange",
-//                 "kiwi"
-//             ]
-//         },
-//         {
-//             "_id": 3,
-//             "orderDate": "2024-08-02",
-//             data: {
-//                 "items": []
-//             },
-//             "items": "a"
-//         },
-//         {
-//             "_id": 4,
-//             "orderDate": "2024-08-02",
-//             data: {
-//                 "items": [
-//                     null,
-//                     null
-//                 ]
-//             },
-//             "items": [
-//                 null,
-//                 null
-//             ]
-//         },
-//         {
-//             "_id": 5,
-//             "orderDate": "2024-08-02",
-//             data: {
-//                 "items": null
-//             },
-//             items: null
-//         },
-//         {
-//             "_id": 6,
-//             "orderDate": "2024-08-02"
-//         }
-//     ]));
-
-
-// console.log(JSON.stringify(aggregate([{
-//     $lookup: {
-//         from: [
-//             { "_id": 1, "item": "apple", "price": 1.00 },
-//             { "_id": 2, "item": "banana", "price": 0.50 }
-//         ], localField: 'itemId', foreignField: '_id', as: 'itemDetails'
-//     }
-// }])([
-//     { "_id": 1, "orderDate": "2024-08-01", "itemId": 1 },
-//     { "_id": 2, "orderDate": "2024-08-02", "itemId": 2 }
-// ]), null, 2));
 
 exports.add = add;
 exports.aggregate = aggregate;

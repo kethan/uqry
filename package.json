@@ -28,7 +28,8 @@
 	},
 	"files": [
 		"dist",
-		"lite"
+		"lite",
+		"full"
 	],
 	"repository": {
 		"type": "git",

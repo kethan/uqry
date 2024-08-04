@@ -43,7 +43,7 @@
 	"devDependencies": {
 		"@rollup/plugin-terser": "^0.4.4",
 		"husky": "^9.1.4",
-		"rollup": "^4.19.0"
+		"rollup": "^4.20.0"
 	},
 	"keywords": [
 		"query",

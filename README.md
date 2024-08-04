@@ -23,7 +23,7 @@ Install the module using npm:
 ```javascript
 import { filter, add } from "uqry/lite";
 ```
-[![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/lite.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry/lite) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/dist/lite.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry/lite)
+[![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/lite/index.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry/lite) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/lite/index.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry/lite)
 
 ## Usage
 

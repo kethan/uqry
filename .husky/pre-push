@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-. "$(dirname "$0")/h"
+# . "$(dirname "$0")/h"
 
-npm version patch
-npm publish
+# npm version patch
+# npm publish

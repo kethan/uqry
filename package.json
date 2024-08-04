@@ -7,7 +7,7 @@
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"unpkg": "./dist/index.min.js",
-	"umd:main": "./dist/index.umd.js",
+	"umd:main": "dist/index.umd.js",
 	"exports": {
 		".": {
 			"import": "./dist/index.js",
@@ -31,7 +31,7 @@
 	},
 	"scripts": {
 		"build": "rollup --config rollup.config.js",
-		"test": "node test.js",
+		"test": "node test.js && node test.lite.js",
 		"prepare": "husky"
 	},
 	"devDependencies": {

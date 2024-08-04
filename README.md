@@ -20,11 +20,12 @@ Install the module using npm:
 
 ## lite version
 
+[![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/lite/index.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry/lite) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/lite/index.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry/lite)
+
+
 ```javascript
 import { filter, add } from "uqry/lite";
 ```
-[![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/lite/index.min.js?compression=brotli&label=brotli&style=flat-square)](https://unpkg.com/uqry/lite) [![Badge size](https://img.badgesize.io/https://unpkg.com/uqry/lite/index.min.js?compression=gzip&label=gzip&style=flat-square)](https://unpkg.com/uqry/lite)
-
 ## Usage
 
 ### Importing the Module
@@ -141,7 +142,7 @@ console.log(filteredData);
 ]
 */
 
-const pipeline = [
+const pipelines = [
 	{
 		$group: {
 			_id: "$address.city",
@@ -154,7 +155,7 @@ const pipeline = [
 	},
 ];
 
-const aggregatedData = aggregate(pipeline)(data);
+const aggregatedData = aggregate(pipelines)(data);
 
 console.log(aggregatedData);
 /*
@@ -223,13 +224,13 @@ The `aggregate` function processes an array of documents through a pipeline of s
 #### Syntax
 
 ```javascript
-const aggregate = (pipeline) => contextArray;
+const aggregate = (pipelines) => contextArray;
 ```
 
 #### Example
 
 ```javascript
-const pipeline = [
+const pipelines = [
 	{ $match: { age: { $gt: 25 } } },
 	{ $group: { _id: "$gender", total: { $sum: 1 } } },
 ];
@@ -239,7 +240,7 @@ const data = [
 	{ name: "Charlie", age: 35, gender: "male" },
 ];
 
-const result = aggregate(pipeline)(data);
+const result = aggregate(pipelines)(data);
 // [
 //     { _id: 'female', total: 1 },
 //     { _id: 'male', total: 1 }
@@ -312,7 +313,7 @@ console.log(
 ```
 ---
 
-# `add` Function
+# Add Function
 
 ## Overview
 
@@ -328,14 +329,14 @@ add(which, op, fn)
 
 - **`which`**: A string specifying the type of operation to which the custom function should be added. Valid values are:
   - `'filter'`: For adding custom filter operations.
-  - `'pipeline'`: For adding custom pipeline stages.
+  - `'stage'`: For adding custom pipeline stage.
   - `'expression'`: For adding custom expression operations.
 
 - **`op`**: A string representing the name of the custom operation or stage. This will be used to reference the custom operation in your queries or pipelines.
 
 - **`fn`**: A function implementing the custom logic for the operation. The signature of this function depends on the type of operation:
   - **Filter Function**: `(query, value) => boolean`
-  - **Pipeline Function**: `(args, context) => result`
+  - **Stage Function**: `(args, context) => result`
   - **Expression Function**: `(args, context) => result`
 
 ## Usage
@@ -355,7 +356,7 @@ add('filter', '$customOp', (query, value) => {
 To add a custom pipeline stage, use the `add` function with the `'pipeline'` parameter.
 
 ```javascript
-add('pipeline', '$customStage', (args, context) => {
+add('stage', '$customStage', (args, context) => {
     // Custom pipeline stage logic
 });
 ```
@@ -384,7 +385,7 @@ const result = data.filter(filter({ age: { $isEven: true } }));
 ### Custom Pipeline Stage
 
 ```javascript
-add('pipeline', '$addField', (args, context) => {
+add('stage', '$addField', (args, context) => {
     return { ...context, newField: 'newValue' };
 });
 

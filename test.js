@@ -282,12 +282,12 @@ describe('Add Operation Test', () => {
     add('filter', '$startswith', (query, value) => value.startsWith(query));
     add('expression', '$mod', (args, context) => args.map(arg => expression(arg)(context)).reduce((a, b) => a % b));
 
-    add('pipeline', '$customStage1', (args, context) => {
+    add('stage', '$customStage1', (args, context) => {
         // Adds a new field `newField` with a static value to each document
         return context.map(item => ({...item, newField: 'addedValue'}))
     });
     
-    add('pipeline', '$customStage2', (args, context) => {
+    add('stage', '$customStage2', (args, context) => {
         // Multiplies the `score` field by a constant
         const multiplier = args[0];        
         return context.map(item => ({...item,  score: (item.score * multiplier)}))
@@ -349,7 +349,7 @@ describe('Add Operation Test', () => {
             ]
         },
         {
-            title: 'Pipeline: $customStage1',
+            title: 'Stage: $customStage1',
             input: () => aggregate([
                 { $customStage1: {} }, // Apply customStage1
                 { $project: { name: 1, age: 1, city: 1, score: 1, newField: 1 } }
@@ -361,7 +361,7 @@ describe('Add Operation Test', () => {
             ]
         },
         {
-            title: 'Pipeline: $customStage2',
+            title: 'Stage: $customStage2',
             input: () => aggregate([
                 { $customStage2: [2] }, // Multiply `score` by 2
                 { $project: { name: 1, age: 1, city: 1, score: 1 } }

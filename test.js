@@ -1,4 +1,4 @@
-import { filter, expression, aggregate, add, isEqual } from './src/index.js';
+import { filter, expression, aggregate, add, eq } from './src/index.js';
 
 const describe = (title, call) => {
     console.log(title);
@@ -18,7 +18,7 @@ const runTests = (testCases) => {
     testCases.forEach(testCase => {
         const output = testCase.input();
         test(testCase.title, () => {
-            const passed = isEqual(output, testCase.expected);
+            const passed = eq(output, testCase.expected);
             if (!passed) {
                 throw new Error(`Expected: ${JSON.stringify(testCase.expected, null, 2)}, Actual: ${JSON.stringify(output, null, 2)}`);
             }
@@ -284,13 +284,13 @@ describe('Add Operation Test', () => {
 
     add('stage', '$customStage1', (args, context) => {
         // Adds a new field `newField` with a static value to each document
-        return context.map(item => ({...item, newField: 'addedValue'}))
+        return context.map(item => ({ ...item, newField: 'addedValue' }))
     });
-    
+
     add('stage', '$customStage2', (args, context) => {
         // Multiplies the `score` field by a constant
-        const multiplier = args[0];        
-        return context.map(item => ({...item,  score: (item.score * multiplier)}))
+        const multiplier = args[0];
+        return context.map(item => ({ ...item, score: (item.score * multiplier) }))
     });
 
     runTests([

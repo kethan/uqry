@@ -1,14 +1,10 @@
 // Helper function to compare equality of objects
-const isEqual = (a, b) => {
-    if (a === b) return true;
-    if (a == null || b == null || typeof a !== typeof b) return false;
-    if (typeof a === 'object') {
-        if ((a.map) !== (b.map)) return false;
-        const keysA = Object.keys(a), keysB = Object.keys(b);
-        return keysA.length === keysB.length && keysA.every(key => isEqual(a[key], b[key]));
-    }
-    return false;
-};
+const eq = (a, b, keys, ctor) => a === b || (
+    a && b && (ctor = a.constructor) === b.constructor
+        ? ctor === Array ? a.length === b.length && a.every((val, idx) => eq(val, b[idx]))
+            : ctor === Object && (keys = ctor.keys(a)).length === ctor.keys(b).length && keys.every((k) => k in b && eq(a[k], b[k]))
+        : (a !== a && b !== b)
+);
 
 const isObject = (obj) => typeof obj === 'object' && !Array.isArray(obj);
 const is$ = (obj) => typeof obj === 'string' && obj.startsWith('$');
@@ -20,26 +16,27 @@ const dset = (obj, path, value) => {
     const [key, ...rest] = path.map ? path : path.split('.');
 
     if (rest.length === 0) {
-        return (obj.map)
-            ? [...obj.slice(0, key), value, ...obj.slice(Number(key) + 1)]
+        return obj.map
+            ? [...obj.slice(0, Number(key)), value, ...obj.slice(Number(key) + 1)]
             : { ...obj, [key]: value };
     }
 
-    return (obj.map)
-        ? [...obj.slice(0, key), dset(obj[key] || {}, rest, value), ...obj.slice(Number(key) + 1)]
-        : { ...obj, [key]: dset(obj[key] || {}, rest, value) };
+    return obj.map
+        ? [...obj.slice(0, Number(key)), dset(obj[key] || (isNaN(rest[0]) ? {} : []), rest, value), ...obj.slice(Number(key) + 1)]
+        : { ...obj, [key]: dset(obj[key] || (isNaN(rest[0]) ? {} : []), rest, value) };
 };
+
 
 // Filter operations
 const filterOps = {
-    $eq: (query, value) => isEqual(query, value),
-    $ne: (query, value) => !isEqual(query, value),
+    $eq: (query, value) => eq(query, value),
+    $ne: (query, value) => !eq(query, value),
     $gt: (query, value) => value > query,
     $gte: (query, value) => value >= query,
     $lt: (query, value) => value < query,
     $lte: (query, value) => value <= query,
-    $in: (query, value) => (Array.isArray(query) ? query : [query]).some(val => isEqual(val, value)),
-    $nin: (query, value) => !(Array.isArray(query) ? query : [query]).some(val => isEqual(val, value)),
+    $in: (query, value) => (Array.isArray(query) ? query : [query]).some(val => eq(val, value)),
+    $nin: (query, value) => !(Array.isArray(query) ? query : [query]).some(val => eq(val, value)),
     $and: (query, value) => query.every(clause => filter(clause)(value)),
     $or: (query, value) => query.some(clause => filter(clause)(value)),
     $not: (query, value) => !filter(query)(value),
@@ -68,18 +65,18 @@ const expressionOps = {
     $min: (args, context) => Math.min(...args.flatMap(arg => expression(arg)(context))),
     $max: (args, context) => Math.max(...args.flatMap(arg => expression(arg)(context))),
     $avg: (args, context) => args.flatMap(arg => expression(arg)(context)).reduce((a, b) => a + b, 0) / args.length,
-    $sum: (args, context) =>  args.flatMap(arg => (expression(arg)(context))).reduce((a, b) => a + b, 0),
+    $sum: (args, context) => args.flatMap(arg => (expression(arg)(context))).reduce((a, b) => a + b, 0),
     $cond: ([condition, trueExpr, falseExpr], context) => expression(condition)(context) ? expression(trueExpr)(context) : expression(falseExpr)(context),
 
-    $eq: ([a, b], context) => isEqual(expression(a)(context), expression(b)(context)),
-    $ne: ([a, b], context) => !isEqual(expression(a)(context), expression(b)(context)),
+    $eq: ([a, b], context) => eq(expression(a)(context), expression(b)(context)),
+    $ne: ([a, b], context) => !eq(expression(a)(context), expression(b)(context)),
     $gt: ([a, b], context) => expression(a)(context) > expression(b)(context),
     $gte: ([a, b], context) => expression(a)(context) >= expression(b)(context),
     $lt: ([a, b], context) => expression(a)(context) < expression(b)(context),
     $lte: ([a, b], context) => expression(a)(context) <= expression(b)(context),
 
-    $in: ([a, b], context) => (Array.isArray(b) ? expression(b)(context) : expression([b])(context)).some(val => isEqual(expression(a)(context), val)),
-    $nin: ([a, b], context) => !(Array.isArray(b) ? expression(b)(context) : expression([b])(context)).some(val => isEqual(expression(a)(context), val)),
+    $in: ([a, b], context) => (Array.isArray(b) ? expression(b)(context) : expression([b])(context)).some(val => eq(expression(a)(context), val)),
+    $nin: ([a, b], context) => !(Array.isArray(b) ? expression(b)(context) : expression([b])(context)).some(val => eq(expression(a)(context), val)),
 
     $and: (args, context) => args.every(arg => expression(arg)(context)),
     $or: (args, context) => args.some(arg => expression(arg)(context)),
@@ -103,13 +100,13 @@ const stageOps = {
         if (excludeFields.length) {
             Object.keys(context).forEach((key) => {
                 if (!excludeFields.includes(key)) {
-                    result[key] = dlv(context, key);
+                    result[key] = dlv(context, key)
                 }
             });
         } else {
             Object.keys(projection).forEach((key) => {
                 result[key] = !(projection[key] === 1 || projection[key] === 0) ? expression(projection[key])(context)
-                    : dlv(context, key);
+                    : dlv(context, key)
             });
         }
         return result;
@@ -207,11 +204,11 @@ const add = (which, op, fn) => {
     if (which === 'filter') filterOps[op] = fn;
     if (which === 'stage') stageOps[op] = fn;
     if (which === 'expression') expressionOps[op] = fn;
-};
+}
 
 // Filter function
 const filter = (query) => (value) => {
-   
+
     if (isObject(query)) {
         return Object.entries(query).every(([key, subFilter]) => {
             if (is$(key)) {
@@ -220,7 +217,7 @@ const filter = (query) => (value) => {
             return filter(subFilter)(dlv(value, key));
         });
     }
-    return isEqual(value, query);
+    return eq(value, query);
 };
 
 // Expression evaluation based on context
@@ -251,4 +248,4 @@ const aggregate = (pipelines) => (docs) => {
     }, docs);
 };
 
-export { add, aggregate, expression, filter, isEqual };
+export { filter, expression, aggregate, add, eq };

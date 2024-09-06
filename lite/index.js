@@ -1,20 +1,16 @@
-const isEqual = (a, b) => {
-    if (a === b) return true;
-    if (a == null || b == null || typeof a !== typeof b) return false;
-    if (typeof a === 'object') {
-        if ((a.map) !== (b.map)) return false;
-        const keysA = Object.keys(a), keysB = Object.keys(b);
-        return keysA.length === keysB.length && keysA.every(key => isEqual(a[key], b[key]));
-    }
-    return false;
-};
+const eq = (a, b, keys, ctor) => a === b || (
+    a && b && (ctor = a.constructor) === b.constructor
+        ? ctor === Array ? a.length === b.length && a.every((val, idx) => eq(val, b[idx]))
+            : ctor === Object && (keys = ctor.keys(a)).length === ctor.keys(b).length && keys.every((k) => k in b && eq(a[k], b[k]))
+        : (a !== a && b !== b)
+);
 
 const dlv = (obj, key) => (Array.isArray(key) ? key : key.split('.')).reduce((a, b) => (a ? a[b] : a), obj);
 const add = (w, op, fn) => ops[op] = fn;
 
 const ops = {
-    $eq: isEqual,
-    $ne: (query, value) => !isEqual(query, value),
+    $eq: eq,
+    $ne: (query, value) => !eq(query, value),
     $gt: (query, value) => value > query,
     $gte: (query, value) => value >= query,
     $lt: (query, value) => value < query,
@@ -44,7 +40,11 @@ const filter = (query) => (context) => {
             return filter(value)(dlv(context, key));
         });
     }
-    return isEqual(context, query);
+    return eq(context, query);
 };
 
-export { add, filter, isEqual };
+export {
+    eq,
+    add,
+    filter
+}

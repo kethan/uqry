@@ -1,4 +1,4 @@
-import { filter, expression, aggregate, add, isEqual } from './src/full.js';
+import { filter, expression, aggregate, add, eq } from './full/index.js';
 
 const describe = (title, call) => {
     console.log(title);
@@ -18,7 +18,7 @@ const runTests = (testCases) => {
     testCases.forEach(testCase => {
         const output = testCase.input();
         test(testCase.title, () => {
-            const passed = isEqual(output, testCase.expected);
+            const passed = eq(output, testCase.expected);
             if (!passed) {
                 throw new Error(`Expected: ${JSON.stringify(testCase.expected, null, 2)}, Actual: ${JSON.stringify(output, null, 2)}`);
             }

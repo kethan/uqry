@@ -1,14 +1,18 @@
 import terser from '@rollup/plugin-terser';
+import bundleSize from 'rollup-plugin-bundle-size';
 
 const resolve = (pkg, input = "src/index", output = "dist/index") => ({
 	input: `${input}.js`,
+	plugins: [
+		bundleSize()
+	],
 	output: [
 		{
-			file: `${output}.js`,
+			file: `${output}.es.js`,
 			format: 'es',
 		},
 		{
-			file: `${output}.cjs`,
+			file: `${output}.js`,
 			format: 'cjs',
 		},
 		{
@@ -32,6 +36,6 @@ const resolve = (pkg, input = "src/index", output = "dist/index") => ({
 
 export default [
 	resolve("uqry"),
-	resolve("uqry", "src/lite", "lite/index"),
-	resolve("uqry", "src/full", "full/index")
+	resolve("uqry", "lite/index", "lite/dist/index"),
+	resolve("uqry", "full/index", "full/dist/index")
 ]

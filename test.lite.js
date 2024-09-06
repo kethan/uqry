@@ -1,4 +1,4 @@
-import { filter, add, isEqual } from './src/lite.js';
+import { filter, add, eq } from './lite/index.js';
 import { expression } from './src/index.js';
 
 const describe = (title, call) => {
@@ -19,7 +19,7 @@ const runTests = (testCases) => {
     testCases.forEach(testCase => {
         const output = testCase.input();
         test(testCase.title, () => {
-            const passed = isEqual(output, testCase.expected);
+            const passed = eq(output, testCase.expected);
             if (!passed) {
                 throw new Error(`Expected: ${JSON.stringify(testCase.expected, null, 2)}, Actual: ${JSON.stringify(output, null, 2)}`);
             }

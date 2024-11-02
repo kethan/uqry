@@ -106,6 +106,11 @@ describe('Filter Test', () => {
             expected: [data[0], data[1], data[2]]
         },
         {
+            title: '$exists false',
+            input: () => data.filter(filter({ state: { $exists: false } })),
+            expected: [data[0], data[1], data[2]]
+        },
+        {
             title: '$expr',
             input: () => data.filter(filter({ $expr: { $eq: ['$age', 25] } })),
             expected: [data[0]]

@@ -482,6 +482,9 @@ const result = aggregate([{ $sumField: ['field'] }])(data);
 -   `$skip`: Skips documents
 -   `$limit`: Limits documents
 -   `$count`: Counts documents
+-   `$unwind`: Unwind documents
+-   `$lookup`: Lookup documents
+-   `$addFields`: Add fields to the documents
 
 ## License
 

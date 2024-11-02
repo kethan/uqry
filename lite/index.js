@@ -22,7 +22,7 @@ const ops = {
     $not: (query, value) => !filter(query)(value),
 
     $regex: (query, value) => new RegExp(query).test(value),
-    $exists: (_, value) => value !== undefined,
+    $exists: (query, value) => query === !!value,
     $type: (query, value) => typeof value === query,
 
     $elemMatch: (query, value) => (Array.isArray(value) ? value : [value]).some(item => filter(query)(item)),

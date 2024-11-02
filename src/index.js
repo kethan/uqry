@@ -28,7 +28,7 @@ const filterOps = {
 
     $regex: (query, value) => new RegExp(query).test(value),
     $expr: (query, value) => expression(query)(value),
-    $exists: (_, value) => value !== undefined,
+    $exists: (query, value) => query === !!value,
     $type: (query, value) => typeof value === query,
 
     $mod: (query, value) => (value % query[0]) === query[1],
